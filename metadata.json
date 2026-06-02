@@ -1,0 +1,6 @@
+{
+  "name": "Axora",
+  "description": "Premium decision intelligence platform for major life and business decisions. Think. Decide. Grow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
