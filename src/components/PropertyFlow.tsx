@@ -43,6 +43,7 @@ import {
   computeLandReport, 
   computeCommercialReport 
 } from "../utils/calculations";
+import { generatePropertyChat, generatePropertyLetter, generatePropertyMemo } from "../utils/gemini";
 
 interface PropertyFlowProps {
   onBack: () => void;
@@ -330,21 +331,8 @@ export default function PropertyFlow({ onBack, currency }: PropertyFlowProps) {
         subType === "residential" ? resInputs :
         subType === "land" ? landInputs : commInputs;
 
-      const response = await fetch("/api/property/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: originalInput,
-          history: wealthMessages,
-          context: activeContext,
-          subType: subType,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to receive response from wealth advisor.");
-
-      setWealthMessages((prev) => [...prev, { role: "model" as const, text: data.reply }]);
+      const reply = await generatePropertyChat(originalInput, wealthMessages, activeContext, subType || "residential");
+      setWealthMessages((prev) => [...prev, { role: "model" as const, text: reply }]);
     } catch (err: any) {
       console.error(err);
       setWealthError(err.message || "Could not reach the Wealth strategy core.");
@@ -364,22 +352,15 @@ export default function PropertyFlow({ onBack, currency }: PropertyFlowProps) {
         subType === "residential" ? resInputs :
         subType === "land" ? landInputs : commInputs;
 
-      const response = await fetch("/api/property/generate-letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenario: letterScenario,
-          recipient: letterRecipient,
-          objective: letterObjective,
-          tone: letterTone,
-          context: activeContext,
-          subType: subType,
-          extraContext: letterCustom,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to generate specialized negotiation letter.");
+      const data = await generatePropertyLetter(
+        letterScenario,
+        letterRecipient,
+        letterObjective,
+        letterTone,
+        activeContext,
+        subType || "residential",
+        letterCustom
+      );
 
       setAiSubject(data.subject);
       setAiBody(data.body);
@@ -401,19 +382,8 @@ export default function PropertyFlow({ onBack, currency }: PropertyFlowProps) {
         subType === "residential" ? resInputs :
         subType === "land" ? landInputs : commInputs;
 
-      const response = await fetch("/api/property/strategic-memo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          context: activeContext,
-          subType: subType,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Analysis engine failure.");
-
-      setStrategicMemo(data.memo);
+      const memo = await generatePropertyMemo(activeContext, subType || "residential");
+      setStrategicMemo(memo);
     } catch (err: any) {
       console.error(err);
       setMemoError(err.message || "Failed to construct active Property Wealth Memo.");

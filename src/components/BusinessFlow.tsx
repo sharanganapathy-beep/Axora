@@ -46,6 +46,7 @@ import {
 } from "recharts";
 import { BusinessInputs, BusinessReport } from "../types";
 import { computeBusinessReport } from "../utils/calculations";
+import { generateCfoChat, generateCfoEmail, generateCfoStrategicAudit } from "../utils/gemini";
 
 interface BusinessFlowProps {
   onBack: () => void;
@@ -177,23 +178,8 @@ Ask me anything, or try testing a few ideas:
     setCfoMessages(updatedHistory);
 
     try {
-      const res = await fetch("/api/vip/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMsg,
-          history: updatedHistory.slice(0, -1), // pass previous messages
-          context: inputs,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "CFO AI is temporarily offline. Ensure GEMINI_API_KEY is configured.");
-      }
-
-      const data = await res.json();
-      setCfoMessages((prev) => [...prev, { role: "assistant" as const, text: data.reply }]);
+      const reply = await generateCfoChat(userMsg, updatedHistory.slice(0, -1), inputs);
+      setCfoMessages((prev) => [...prev, { role: "assistant" as const, text: reply }]);
     } catch (err: any) {
       console.error("Chat error:", err);
       setCfoError(err.message || "Failed to establish secure link to the Fractional CFO.");
@@ -209,25 +195,14 @@ Ask me anything, or try testing a few ideas:
     setAiBody("");
 
     try {
-      const res = await fetch("/api/vip/generate-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenario: emailScenario,
-          recipient: emailRecipient,
-          objective: emailObjective,
-          tone: emailTone,
-          context: inputs,
-          extraContext: emailCustom,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Email Copilot error. Make sure your GEMINI_API_KEY is active.");
-      }
-
-      const data = await res.json();
+      const data = await generateCfoEmail(
+        emailScenario,
+        emailRecipient,
+        emailObjective,
+        emailTone,
+        inputs,
+        emailCustom
+      );
       setAiSubject(data.subject || "Strategic Update");
       setAiBody(data.body || "");
     } catch (err: any) {
@@ -244,19 +219,8 @@ Ask me anything, or try testing a few ideas:
     setStrategicMemo("");
 
     try {
-      const res = await fetch("/api/vip/strategic-audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context: inputs }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Strategic Audit error. Ensure your GEMINI_API_KEY is defined.");
-      }
-
-      const data = await res.json();
-      setStrategicMemo(data.memo || "");
+      const memo = await generateCfoStrategicAudit(inputs);
+      setStrategicMemo(memo || "");
     } catch (err: any) {
       console.error("Strategic memo error:", err);
       setMemoError(err.message || "Could not compile interactive strategic CFO audit briefing.");
